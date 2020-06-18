@@ -83,11 +83,38 @@ model <- keras_model_sequential() %>%
   layer_dense(units = 64, activation = "relu") %>%
   layer_dense(units = 46, activation = "softmax")
 
+print("Compiling network")
+
 model %>% compile(
   optimizer = "rmsprop",
   loss = "categorical_crossentropy",
   metrics = c("accuracy")
 )
 
+## Setting aside a validation set
 
+print("setting aside a validation set from the training set")
 
+val_indices <- 1:1000
+
+# first the train data
+x_val <- x_train[val_indices,]
+partial_x_trian <- x_train[-val_indices,]
+
+#then the train labels
+y_val <- one_hot_train_labels[val_indices,]
+partial_y_train <- one_hot_train_labels[-val_indices,]
+
+### Training the model
+
+print("Training the model on 20 epochs")
+
+history <- model %>% fit(
+  partial_x_trian,
+  partial_y_train,
+  epochs = 20,
+  batch_size = 512,
+  validation_data = list(x_val, y_val)
+)
+
+plot(history)
