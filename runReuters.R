@@ -113,7 +113,9 @@ history <- model %>% fit(
   partial_x_trian,
   partial_y_train,
   epochs = 20,
-  batch_size = 512,
+  batch_size = 512, # 2^9
+  # batch_size = 256, # 2^8
+  # batch_size = 64, # 2^6 this makes overfits worse and validation loss much higher
   validation_data = list(x_val, y_val)
 )
 
