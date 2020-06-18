@@ -14,17 +14,28 @@ if(length(new.packages))
 
 library(keras)
 
-reuters <- dataset_reuters(num_words = 10000)
+dictionary_size = 10000
+
+reuters <- dataset_reuters(num_words = dictionary_size)
 
 # Keras multiple assignment operator
 c(c(train_data, train_labels), c(test_data, test_labels)) %<-% reuters
 
+train_size <- length(train_data)
+
 # each sample is a list of integers (word indices)
 
-newswire.number <- readline(prompt = "What newswire # would you like to see?")
+newswire.number <- readline(prompt = paste0("What newswire # would you like to see? [choose between 1 and ", train_size, "]"))
 newswire.number <- as.numeric(newswire.number)
-tryCatch(stopifnot(c(newswire.number > 0, newswire.number < 10000)), 
-         finally = print(paste0("Choose from 1 to 10,000 ", geterrmessage())))
+cat(newswire.number)
+tryCatch({stopifnot(newswire.number > 0, newswire.number <= train_size)}, 
+         error = function(error_condition) {
+           print(paste0("Error: Choose between 1 and ", 
+                        train_size, 
+                        ", ", 
+                        error_condition)
+                 )
+           })
 
 newswire <- train_data[[newswire.number]]
 list.data.sample2 = paste(sapply(newswire, FUN = paste, collapse = " "), collapse = " ")
@@ -53,7 +64,7 @@ rm(list.data.sample2.words)
 
 # prepare to vectorize newswires:
 
-vectorize_sequences <- function(sequences, dimension = 10000) {
+vectorize_sequences <- function(sequences, dimension = dictionary_size) {
   results = matrix(0, nrow = length(sequences), ncol = dimension)
   for (i in 1:length(sequences))
     results[i, sequences[[i]]] <- 1
@@ -79,7 +90,7 @@ one_hot_test_labels <- to_categorical(test_labels)
 
 
 model <- keras_model_sequential() %>%
-  layer_dense(units = 64, activation = "relu", input_shape = c(10000)) %>%
+  layer_dense(units = 64, activation = "relu", input_shape = c(dictionary_size)) %>%
   layer_dense(units = 64, activation = "relu") %>%
   layer_dense(units = 46, activation = "softmax")
 
@@ -107,12 +118,28 @@ partial_y_train <- one_hot_train_labels[-val_indices,]
 
 ### Training the model
 
-print("Training the model on 20 epochs")
+print("Starting training model..")
+epochs <- readline(prompt = "How many epochs?")
+epochs <- as.numeric(epochs)
+epochs.max_num <- 20
+
+tryCatch({stopifnot(epochs > 0, epochs <= epochs.max_num)}, 
+         error = function(error_condition) {
+           print(paste0("Choose from 1 to ", 
+                        epochs.max_num, ", ",
+                        error_condition)
+           )
+         })
+           
+           
+           
+
+print(paste0("Training the model on ", epochs, " epochs"))
 
 history <- model %>% fit(
   partial_x_trian,
   partial_y_train,
-  epochs = 20,
+  epochs = epochs,
   batch_size = 512, # 2^9
   # batch_size = 256, # 2^8
   # batch_size = 64, # 2^6 this makes overfits worse and validation loss much higher
@@ -120,3 +147,19 @@ history <- model %>% fit(
 )
 
 plot(history)
+
+
+## Evaluate the model on test data
+
+results <- model %>% evaluate(x_test, one_hot_test_labels, verbose = 0)
+
+print(paste0("Accuracy: ", round(results$acc, digits = 4), "; loss: ", round(results$loss, digits = 4), ", after ", epochs, " epochs."))
+
+
+## Exploring the predictions
+
+predictions <- model %>% predict(x_test)
+
+print("computing predictions on test data.")
+print(paste0("There are ", dim(predictions)[1], " predictions."))
+print(paste0("The most common newswire type predicted is #", which.max(predictions[1,])))
